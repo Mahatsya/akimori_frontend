@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+/* где Tailwind ищет классы */
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../node_modules/preline/dist/*.js";
+
+/* Если используешь preline variants */
+@import "preline/variants.css";
+
+/* Плагины Tailwind */
+@plugin "@tailwindcss/forms";
+
+@plugin "tailwind-gradient-mask-image";
+
+/* =========================
+   БАЗОВЫЕ ТЕМАТИЧЕСКИЕ ПЕРЕМЕННЫЕ
+   ========================= */
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --muted: #111827;
+  --muted-foreground: rgba(255,255,255,0.7);
+
+  --card: rgba(255,255,255,0.04);
+  --card-foreground: #ffffff;
+
+  --border: rgba(255,255,255,0.10);
+  --ring: #fb923c;                  /* orange-400 */
+  --primary: #ffffff;
+  --primary-foreground: #0a0a0a;
+
+  --secondary: rgba(255,255,255,0.08);
+  --secondary-foreground: #ffffff;
+
+  --accent: #f97316;                /* orange-500 */
+  --accent-foreground: #0a0a0a;
+}
+
+/* СВЕТЛАЯ ТЕМА */
+html.theme-light {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  --muted: #f3f4f6;
+  --muted-foreground: #374151;
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+
+  --border: rgba(0,0,0,0.1);
+  --ring: #f97316;                  /* orange-500 */
+
+  --primary: #0f172a;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f3f4f6;
+  --secondary-foreground: #0a0a0a;
+
+  --accent: #f97316;                /* orange-500 */
+  --accent-foreground: #ffffff;
+}
+
+/* ТЁМНАЯ ТЕМА */
+html.theme-dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --muted: #111827;
+  --muted-foreground: rgba(255,255,255,0.7);
+
+  --card: rgba(255,255,255,0.04);
+  --card-foreground: #ffffff;
+
+  --border: rgba(255,255,255,0.10);
+  --ring: #fb923c;                  /* orange-400 */
+
+  --primary: #ffffff;
+  --primary-foreground: #0a0a0a;
+
+  --secondary: rgba(0, 0, 0, 0.63);
+  --secondary-foreground: #ffffff;
+
+  --accent: #f97316;                /* orange-500 */
+  --accent-foreground: #0a0a0a;
+}
+
+/* Автодетект как предзагрузка до JS */
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --muted: #f3f4f6;
+    --muted-foreground: #374151;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --border: rgba(0,0,0,0.1);
+    --ring: #f97316;                /* orange-500 */
+    --primary: #0f172a;
+    --primary-foreground: #ffffff;
+    --secondary: #f3f4f6;
+    --secondary-foreground: #0a0a0a;
+    --accent: #f97316;              /* orange-500 */
+    --accent-foreground: #ffffff;
+  }
+}
+
+/* БАЗА */
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Утилита */
+.link { @apply text-white/70 hover:text-white; }
+
+@layer utilities {
+  @keyframes grow-x {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  .animate-grow {
+    transform-origin: left;
+    animation: grow-x 900ms ease-out both;
+  }
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--foreground) 30%, transparent) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 25%, transparent);
+  border-radius: 999px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* чуть тоньше базовая полоска Plyr, чтобы наши сегменты выглядели нативно */
+.plyr--full-ui input[type='range']::-webkit-slider-runnable-track { height: 6px; }
+.plyr--full-ui input[type='range']::-moz-range-track { height: 6px; }
+
+/* скрыть volume на тач-устройствах (доп. страховка) */
+@media (pointer: coarse) {
+  .plyr__controls .plyr__volume { display: none !important; }
+}
+
+.input{
+  @apply rounded-xl border border-[var(--border)] bg-[color:var(--secondary)] px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--accent)]/40;
+}
+
+@layer utilities {
+  /* мягкая вертикальная маска снизу — плавный переход к фону страницы */
+  .mask-b-soft {
+    -webkit-mask-image: linear-gradient(to bottom, black 12%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to bottom, black 12%, rgba(0,0,0,0) 100%);
+  }
+  /* варианты, если захочешь сильнее/слабее */
+  .mask-b-softer {
+    -webkit-mask-image: linear-gradient(to bottom, black 68%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to bottom, black 68%, rgba(0,0,0,0) 100%);
+  }
+  .mask-b-strong {
+    -webkit-mask-image: linear-gradient(to bottom, black 82%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to bottom, black 82%, rgba(0,0,0,0) 100%);
+  }
+}
+
+
+/* Ссылка, дружит с темами и Preline */
+.link {
+  @apply transition-colors;
+  color: color-mix(in oklab, var(--foreground) 80%, transparent);
+}
+.link:hover { color: var(--foreground); }
+
+/* Чуть выше специфичность для заголовков — чтобы точно не «осветлялось» */
+h1 .link, h2 .link, h3 .link, h4 .link {
+  color: var(--foreground);
+}
+h1 .link:hover, h2 .link:hover, h3 .link:hover, h4 .link:hover {
+  color: var(--foreground);
+}
+
+.prose :where(a.link):not(:where([class~="not-prose"] *)) {
+  color: var(--foreground);
+}
+.prose :where(a.link:hover):not(:where([class~="not-prose"] *)) {
+  color: var(--foreground);
+}
+
+
+@layer components {
+  .input{
+    /* вместо px-3 — раздельные, чтобы ps можно было увеличить сверху */
+    @apply rounded-xl border border-[var(--border)] bg-[color:var(--secondary)]
+           py-2 pe-3 ps-3 outline-none focus:ring-2 focus:ring-[color:var(--accent)]/40;
+  }
+  /* модификатор для инпутов с иконкой слева */
+  .input--with-icon{
+    @apply ps-12; /* даёт стабильный «карман» под иконку */
+  }
+}
+
+
+@layer utilities {
+  /* Оранжевая «шапка» с мягким градиентом и деликатными диагональными полосами */
+  .bg-accent-pane {
+    background:
+      linear-gradient(135deg,
+        color-mix(in oklab, var(--accent) 35%, transparent) 0%,
+        color-mix(in oklab, var(--accent) 22%, transparent) 60%,
+        transparent 100%
+      );
+    position: relative;
+  }
+  .bg-accent-pane::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--accent) 14%, transparent) 0px,
+        color-mix(in oklab, var(--accent) 14%, transparent) 2px,
+        transparent 2px,
+        transparent 8px
+      );
+    opacity: .25;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+}
