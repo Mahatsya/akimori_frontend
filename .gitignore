@@ -1,6 +1,7 @@
 # зависимости
 node_modules/
 
+
 # билд и кеши
 .next/
 out/
@@ -12,6 +13,7 @@ coverage/
 .env
 .env.*
 *.local
+aki_frontend.zip
 
 # системное
 npm-debug.log*
