@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import YearRange from "@/components/ui/anime/YearRange";
 import type { FiltersPayload } from "./FiltersBar";
 
-type Genre = { name: string; source?: string };
+type Genre = {
+  id?: number;
+  name: string;
+  slug?: string;
+  source?: string;
+};
 
 export default function FiltersSidebar({
   initial,
@@ -22,13 +27,9 @@ export default function FiltersSidebar({
   const [types, setTypes] = useState<string[]>(initial?.types ?? []);
   const [statuses, setStatuses] = useState<string[]>(initial?.statuses ?? []);
   const [ratings, setRatings] = useState<string[]>(initial?.ratings ?? []);
-  const [years, setYears] = useState<[number, number]>(
-    initial?.years ?? [minYear, maxYear]
-  );
+  const [years, setYears] = useState<[number, number]>(initial?.years ?? [minYear, maxYear]);
   const [query, setQuery] = useState(initial?.query ?? "");
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(
-    initial?.genres ?? []
-  );
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(initial?.genres ?? []);
   const [genreSearch, setGenreSearch] = useState("");
 
   const genres = useMemo(
@@ -73,7 +74,7 @@ export default function FiltersSidebar({
     <aside className="sticky top-4 h-fit w-full rounded-3xl border border-[var(--border)] bg-[color:var(--card)]/75 p-4 backdrop-blur-xl">
       {/* Поиск */}
       <div className="mb-4">
-        <div className="text-xs font-semibold mb-1 opacity-80">Поиск</div>
+        <div className="mb-1 text-xs font-semibold opacity-80">Поиск</div>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -85,7 +86,10 @@ export default function FiltersSidebar({
       {/* Тип */}
       <Section title="Тип">
         <MultiToggle
-          items={[{ v: "anime", label: "Аниме" }, { v: "anime-serial", label: "Сериал" }]}
+          items={[
+            { v: "anime", label: "Аниме" },
+            { v: "anime-serial", label: "Сериал" },
+          ]}
           values={types}
           onToggle={(v) => toggle(types, v, setTypes)}
         />
@@ -104,7 +108,7 @@ export default function FiltersSidebar({
         />
       </Section>
 
-      {/* Возрастной рейтинг (визуально; подключишь фильтр — добавим маппинг) */}
+      {/* Возрастной рейтинг */}
       <Section title="Возрастной рейтинг">
         <MultiToggle
           size="xs"
@@ -122,13 +126,7 @@ export default function FiltersSidebar({
 
       {/* Годы */}
       <Section title="Годы">
-        <YearRange
-          min={minYear}
-          max={maxYear}
-          value={years}
-          onChange={setYears}
-          format={(n) => String(n)}
-        />
+        <YearRange min={minYear} max={maxYear} value={years} onChange={setYears} format={(n) => String(n)} />
       </Section>
 
       {/* Жанры */}
@@ -142,14 +140,15 @@ export default function FiltersSidebar({
         <div className="flex max-h-48 flex-wrap gap-1.5 overflow-auto pr-1">
           {filteredGenres.length ? (
             filteredGenres.map((g) => {
-              const val = g.name;
+              const val = g.slug;
+              if (!val) return null;
               const active = selectedGenres.includes(val);
               return (
                 <button
                   key={val}
                   onClick={() => toggle(selectedGenres, val, setSelectedGenres)}
                   className={
-                    "px-2.5 py-1 rounded-lg text-xs border transition " +
+                    "rounded-lg border px-2.5 py-1 text-xs transition " +
                     (active
                       ? "bg-[var(--accent)] text-white border-transparent"
                       : "bg-[var(--secondary)] border-[var(--border)] hover:bg-[var(--secondary)]/80")
@@ -161,7 +160,7 @@ export default function FiltersSidebar({
               );
             })
           ) : (
-            <span className="text-xs text-[color:var(--foreground)/.6]">Жанры не найдены</span>
+            <span className="text-xs text-[color:var(--foreground)] opacity-60">Жанры не найдены</span>
           )}
         </div>
       </Section>
@@ -169,7 +168,7 @@ export default function FiltersSidebar({
       <div className="mt-4 flex justify-between">
         <button
           onClick={clearAll}
-          className="px-3 py-2 rounded-xl text-sm border border-[var(--border)] bg-[var(--secondary)] hover:bg-[color:var(--secondary)]/80"
+          className="rounded-xl border border-[var(--border)] bg-[var(--secondary)] px-3 py-2 text-sm hover:bg-[color:var(--secondary)]/80"
         >
           Сбросить всё
         </button>
@@ -181,9 +180,7 @@ export default function FiltersSidebar({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <div className="mb-1 font-semibold text-xs tracking-wide text-[color:var(--foreground)]/85">
-        {title}
-      </div>
+      <div className="mb-1 text-xs font-semibold tracking-wide text-[color:var(--foreground)] opacity-85">{title}</div>
       {children}
     </div>
   );
@@ -200,9 +197,7 @@ function MultiToggle({
   onToggle: (v: string) => void;
   size?: "xs" | "sm";
 }) {
-  const clsBase =
-    (size === "xs" ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm") +
-    " rounded-xl border transition";
+  const clsBase = (size === "xs" ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-sm") + " rounded-xl border transition";
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((it) => {

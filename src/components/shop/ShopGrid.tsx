@@ -1,53 +1,94 @@
-// src/components/shop/ShopGrid.tsx
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Offer } from "@/lib/shopApi";
-import { purchaseByOfferId /* , purchaseByItemSlug */ } from "@/app/shop/actions";
+import PurchaseModal from "@/components/shop/PurchaseModal";
+
+type Cat = "avatar" | "header" | "avatar_frame" | "theme";
+type Price = "" | "cheap" | "expensive";
+
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const a = [...values].sort((x, y) => x - y);
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
+}
 
 export default function ShopGrid({ offers }: { offers: Offer[] }) {
+  const sp = useSearchParams();
+  const cat = (sp.get("cat") as Cat) || "avatar";
+  const price = (sp.get("price") as Price) || "";
+
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Offer | null>(null);
+
+  const prices = useMemo(
+    () => offers.map((o) => Number(o.current_price || 0)).filter(Number.isFinite),
+    [offers],
+  );
+  const med = useMemo(() => median(prices), [prices]);
+
+  const filtered = useMemo(() => {
+    let list = offers.filter((o) => (o.item?.type || "") === cat);
+
+    if (price) {
+      list = list.filter((o) => {
+        const p = Number(o.current_price || 0);
+        return price === "cheap" ? p <= med : p > med;
+      });
+
+      list.sort((a, b) =>
+        price === "cheap"
+          ? (a.current_price ?? 0) - (b.current_price ?? 0)
+          : (b.current_price ?? 0) - (a.current_price ?? 0),
+      );
+    }
+
+    return list;
+  }, [offers, cat, price, med]);
+
+  function openBuy(offer: Offer) {
+    setSelected(offer);
+    setOpen(true);
+  }
+  function close() {
+    setOpen(false);
+    setSelected(null);
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="rounded-2xl border border-[var(--border)] bg-[color:var(--card)]/25 p-6 text-sm opacity-70">
+        В этой категории пока нет товаров.
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {offers.map((o) => (
-        <OfferCard key={o.id} offer={o} />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        {filtered.map((o) => (
+          <OfferCard key={o.id} offer={o} onBuy={() => openBuy(o)} />
+        ))}
+      </div>
+
+      <PurchaseModal open={open} offer={selected} onClose={close} />
+    </>
   );
 }
 
-function OfferCard({ offer }: { offer: Offer }) {
+function OfferCard({ offer, onBuy }: { offer: Offer; onBuy: () => void }) {
   const item = offer.item;
   const preview = item?.preview_url ?? null;
   const isVideo =
     !!(item?.mime?.startsWith("video/") || (preview && preview.endsWith(".webm")));
 
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function buy() {
-    if (!offer.selling_now || busy) return;
-    setBusy(true);
-    setErr(null);
-
-    // Вариант А — по offer_id:
-    const res = await purchaseByOfferId(offer.id);
-
-    // Вариант Б — по item_slug:
-    // const res = await purchaseByItemSlug(item?.slug ?? "");
-
-    setBusy(false);
-    if (!res.ok) {
-      setErr(res.error || "Ошибка покупки");
-      return;
-    }
-    // TODO: обновить баланс, показать тост и т.п.
-  }
-
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[color:var(--card)] overflow-hidden">
-      <div className="relative aspect-[4/3] bg-[color:var(--secondary)]">
+    <div className="rounded-2xl border border-[var(--border)] bg-[color:var(--card)]/25 overflow-hidden hover:bg-[color:var(--card)]/35 transition">
+      <div className="relative aspect-square bg-[color:var(--secondary)]/40">
         {preview ? (
           isVideo ? (
             <video
@@ -63,47 +104,41 @@ function OfferCard({ offer }: { offer: Offer }) {
               src={preview}
               alt={item?.title ?? ""}
               fill
-              sizes="300px"
+              sizes="240px"
               className="object-cover"
               unoptimized
             />
           )
         ) : null}
+
+        {!offer.selling_now && (
+          <div className="absolute left-3 bottom-3 rounded-full bg-black/60 px-3 py-1 text-xs">
+            Недоступно
+          </div>
+        )}
       </div>
 
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
+      <div className="p-3">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate font-semibold">{item?.title ?? "Предмет"}</div>
-            <div className="text-xs text-white/60">
-              {item?.rarity ?? "—"} • {item?.type ?? ""}
+            <div className="truncate text-sm font-semibold">
+              {item?.title ?? "Предмет"}
             </div>
+            <div className="text-xs opacity-60">{item?.rarity ?? "—"}</div>
           </div>
-          <div className="text-right">
-            <div className="font-bold">{offer.current_price} AKI</div>
-            {!offer.selling_now && (
-              <div className="text-[10px] uppercase text-white/60">Скоро</div>
-            )}
+          <div className="text-sm font-bold whitespace-nowrap">
+            {offer.current_price} AKI
           </div>
         </div>
 
         <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={buy}
-            disabled={busy || !offer.selling_now}
-            className="rounded-xl border border-[var(--primary)] bg-[var(--primary)] px-3 py-1.5 text-sm text-[var(--primary-foreground)] hover:opacity-95 disabled:opacity-50"
+            onClick={onBuy}
+            disabled={!offer.selling_now}
+            className="h-9 rounded-xl px-3 text-sm font-medium bg-[var(--accent)] text-[var(--accent-foreground)] hover:opacity-95 disabled:opacity-50"
           >
-            {busy ? "Покупаем..." : "Купить"}
+            Купить
           </button>
-
-          <Link
-            href={`/shop/${item?.slug ?? offer.id}`}
-            className="rounded-xl border border-[var(--border)] bg-[color:var(--secondary)] px-3 py-1.5 text-sm hover:bg-[color:var(--card)]/60"
-          >
-            Подробнее
-          </Link>
-
-          {err && <span className="text-xs text-red-500">{err}</span>}
         </div>
       </div>
     </div>

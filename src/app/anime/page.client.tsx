@@ -246,7 +246,9 @@ export default function CatalogPage({
         </div>
         <div className="flex flex-wrap gap-1.5 max-h-48 overflow-auto pr-1">
           {filteredGenres.length ? filteredGenres.map((g) => {
-            const val = g.name; const active = filters.genres.includes(val);
+            const val = g.slug;
+              if (!val) return null; // или пропускай жанр
+            const active = filters.genres.includes(val);
             return (
               <button
                 key={val}

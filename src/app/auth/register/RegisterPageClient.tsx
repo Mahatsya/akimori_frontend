@@ -2,41 +2,59 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiMail, HiUser, HiLockClosed } from "react-icons/hi";
+import { HiMail, HiUser, HiLockClosed, HiArrowRight } from "react-icons/hi";
 import { FiCheckCircle } from "react-icons/fi";
 
 export default function RegisterPageClient() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
-  const [username, setUser] = useState("");
-  const [password, setPass] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"form" | "verify">("form");
 
   const [loading, setLoading] = useState(false);
-  const [error, setErr] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  function resetAlerts() {
+    setError(null);
+    setSuccess(null);
+  }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    resetAlerts();
+
+    if (password !== password2) {
+      setError("Пароли не совпадают");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Пароль должен быть минимум 8 символов");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/register/", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Ошибка регистрации");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Ошибка регистрации");
 
       setStep("verify");
       setSuccess("Код отправлен на почту. Введите его ниже.");
     } catch (err: any) {
-      setErr(err.message);
+      setError(err?.message || "Ошибка регистрации");
     } finally {
       setLoading(false);
     }
@@ -44,151 +62,232 @@ export default function RegisterPageClient() {
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    resetAlerts();
     setLoading(true);
+
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/verify/", {
+      const res = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Ошибка проверки кода");
 
-      setSuccess("Почта подтверждена! Сейчас перенаправим на вход…");
-      setTimeout(() => router.push("/auth/login"), 1500);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Ошибка проверки кода");
+
+      setSuccess("Почта подтверждена! Перенаправляем на вход…");
+      setTimeout(() => router.push("/auth/login"), 900);
     } catch (err: any) {
-      setErr(err.message);
+      setError(err?.message || "Ошибка проверки кода");
     } finally {
       setLoading(false);
     }
   }
 
+  const inputBase =
+    "w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--secondary)] px-4 py-3 pl-12 outline-none focus:ring-2 focus:ring-[color:var(--accent)]/40";
+
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* фон */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-fuchsia-700 via-violet-700 to-slate-900" />
-      <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full blur-3xl opacity-30 bg-cyan-400" />
-      <div className="absolute -bottom-24 -right-24 h-80 w-80 rounded-full blur-3xl opacity-30 bg-pink-500" />
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6 shadow-xl">
+        {/* HEADER */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold">
+              {step === "form" ? "Регистрация" : "Подтверждение почты"}
+            </h1>
+            {step === "verify" && (
+              <div className="text-xs text-[color:var(--muted-foreground)] mt-1">
+                {email}
+              </div>
+            )}
+          </div>
+          <span className="text-xs text-[color:var(--muted-foreground)]">
+            Akimori
+          </span>
+        </div>
 
-      <div className="mx-auto max-w-md px-6 pt-20">
-        <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-8">
-          <h1 className="text-white text-3xl font-bold tracking-tight">
-            Регистрация Akimori
-          </h1>
-          <p className="text-white/70 mt-2 text-sm">
-            Создайте аккаунт, чтобы начать путешествие.
-          </p>
-
-          {step === "form" ? (
-            <form onSubmit={handleRegister} className="mt-8 space-y-4">
+        {step === "form" ? (
+          <form onSubmit={handleRegister} className="space-y-4">
+            {/* USERNAME */}
+            <div>
+              <label className="block text-xs mb-1 text-[color:var(--muted-foreground)]">
+                Username
+              </label>
               <div className="relative">
-                <HiUser className="absolute left-3 top-3.5 text-white/50" />
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)]">
+                  <HiUser size={18} />
+                </span>
                 <input
-                  className="pl-10 w-full rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 px-4 py-3"
-                  placeholder="Имя пользователя"
+                  className={inputBase}
+                  placeholder="mori_user"
                   value={username}
-                  onChange={(e) => setUser(e.target.value)}
+                  onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
+                  required
                 />
               </div>
+            </div>
 
+            {/* EMAIL */}
+            <div>
+              <label className="block text-xs mb-1 text-[color:var(--muted-foreground)]">
+                Email
+              </label>
               <div className="relative">
-                <HiMail className="absolute left-3 top-3.5 text-white/50" />
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)]">
+                  <HiMail size={18} />
+                </span>
                 <input
                   type="email"
-                  className="pl-10 w-full rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 px-4 py-3"
-                  placeholder="Почта"
+                  className={inputBase}
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  required
                 />
               </div>
+            </div>
 
+            {/* PASSWORD */}
+            <div>
+              <label className="block text-xs mb-1 text-[color:var(--muted-foreground)]">
+                Password
+              </label>
               <div className="relative">
-                <HiLockClosed className="absolute left-3 top-3.5 text-white/50" />
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)]">
+                  <HiLockClosed size={18} />
+                </span>
                 <input
                   type="password"
-                  className="pl-10 w-full rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 px-4 py-3"
-                  placeholder="Пароль"
+                  className={inputBase}
+                  placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPass(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* PASSWORD CONFIRM */}
+            <div>
+              <label className="block text-xs mb-1 text-[color:var(--muted-foreground)]">
+                Повторите пароль
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)]">
+                  <HiLockClosed size={18} />
+                </span>
+                <input
+                  type="password"
+                  className={inputBase}
+                  placeholder="••••••••"
+                  value={password2}
+                  onChange={(e) => setPassword2(e.target.value)}
+                  autoComplete="new-password"
+                  required
                 />
               </div>
 
-              {error && (
-                <div className="text-sm text-red-300 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">
-                  {error}
+              {password2.length > 0 && password !== password2 && (
+                <div className="mt-2 text-xs text-red-400">
+                  Пароли должны совпадать
                 </div>
               )}
-              {success && (
-                <div className="text-sm text-emerald-300 bg-emerald-500/20 border border-emerald-400/40 rounded-lg px-3 py-2">
-                  {success}
-                </div>
-              )}
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-medium py-3 hover:opacity-95 active:opacity-90 transition disabled:opacity-60"
-              >
-                {loading ? "Создаём…" : "Создать аккаунт"}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerify} className="mt-8 space-y-4">
-              <div>
-                <label className="block text-sm text-white/80">
-                  Введите код из письма
-                </label>
-                <div className="relative mt-1">
-                  <FiCheckCircle className="absolute left-3 top-3.5 text-white/50" />
-                  <input
-                    className="pl-10 w-full rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 px-4 py-3 tracking-widest text-center"
-                    placeholder="123456"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    maxLength={6}
-                  />
-                </div>
+            {/* ERROR / SUCCESS */}
+            {error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {error}
               </div>
+            )}
+            {success && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                {success}
+              </div>
+            )}
 
-              {error && (
-                <div className="text-sm text-red-300 bg-red-500/20 border border-red-400/40 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="text-sm text-emerald-300 bg-emerald-500/20 border border-emerald-400/40 rounded-lg px-3 py-2">
-                  {success}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white font-medium py-3 hover:opacity-95 active:opacity-90 transition disabled:opacity-60"
-              >
-                {loading ? "Проверяем…" : "Подтвердить код"}
-              </button>
-            </form>
-          )}
-
-          <div className="text-center mt-6 text-white/70 text-sm">
-            Уже есть аккаунт?{" "}
-            <a
-              href="/auth/login"
-              className="text-white underline underline-offset-4"
+            {/* BUTTON */}
+            <button
+              type="submit"
+              disabled={loading || (password2.length > 0 && password !== password2)}
+              className="group flex w-full items-center justify-between rounded-xl
+                         bg-[color:var(--accent)] px-4 py-3 text-sm font-medium
+                         text-[color:var(--accent-foreground)] disabled:opacity-60"
             >
-              Войти
-            </a>
-          </div>
-        </div>
+              <span>{loading ? "Создаём…" : "Создать аккаунт"}</span>
+              <HiArrowRight className="opacity-80" />
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div>
+              <label className="block text-xs mb-1 text-[color:var(--muted-foreground)]">
+                Код из письма
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)]">
+                  <FiCheckCircle size={18} />
+                </span>
+                <input
+                  className={`${inputBase} tracking-widest text-center`}
+                  placeholder="123456"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  inputMode="numeric"
+                  maxLength={6}
+                  required
+                />
+              </div>
+            </div>
 
-        <p className="text-center text-white/60 text-xs mt-6">
-          © {new Date().getFullYear()} Akimori
-        </p>
+            {error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                {success}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="group flex w-full items-center justify-between rounded-xl
+                         bg-[color:var(--accent)] px-4 py-3 text-sm font-medium
+                         text-[color:var(--accent-foreground)] disabled:opacity-60"
+            >
+              <span>{loading ? "Проверяем…" : "Подтвердить"}</span>
+              <HiArrowRight className="opacity-80" />
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                resetAlerts();
+                setStep("form");
+                setCode("");
+              }}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm
+                         text-[color:var(--muted-foreground)] hover:bg-[color:var(--secondary)] disabled:opacity-60"
+            >
+              Назад
+            </button>
+          </form>
+        )}
+
+        {/* FOOTER */}
+        <div className="mt-5 flex justify-between text-xs">
+          <a href="/auth/login" className="link">
+            Уже есть аккаунт? Войти
+          </a>
+        </div>
       </div>
     </div>
   );

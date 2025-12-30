@@ -244,7 +244,7 @@ export default async function HomePage() {
                   </h2>
                 </div>
 
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-64 md:max-h-80 overflow-y-auto pr-1 thin-scroll">
                   {col.items.map((m) => {
                     let topLine: string;
                     let extraLine: string | null = null;
@@ -268,9 +268,14 @@ export default async function HomePage() {
                       <Link
                         key={m.slug}
                         href={`/anime/${m.slug}`}
-                        className="flex items-center gap-3 rounded-2xl border border-white/5 bg-black/10 px-2 py-2 hover:border-[var(--accent)]/70 hover:bg-white/5 transition"
-                      >
-                        <div className="relative h-14 w-10 rounded-xl overflow-hidden bg-black/40 flex-shrink-0">
+                        className="
+                          grid grid-cols-[40px_1fr] md:flex md:items-center
+                          gap-3 rounded-2xl border border-white/5 bg-black/10
+                          p-2 md:px-2 md:py-2
+                          hover:border-[var(--accent)]/70 hover:bg-white/5 transition
+                        "
+                        >
+                        <div className="relative h-14 w-10 md:h-14 md:w-10 h-16 w-12 rounded-xl overflow-hidden bg-black/40">
                           {m.poster_url ? (
                             <Image
                               src={m.poster_url}
@@ -287,8 +292,8 @@ export default async function HomePage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs opacity-70">{topLine}</div>
-                          <div className="text-sm font-medium truncate">
+                          <div className="text-xs opacity-70 whitespace-nowrap overflow-hidden text-ellipsis">{topLine}</div>
+                          <div className="text-sm font-medium leading-snug md:truncate line-clamp-2 md:line-clamp-none">
                             {m.title}
                           </div>
                           {extraLine && (

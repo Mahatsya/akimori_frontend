@@ -3,24 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import Link from "next/link";
-import {
-  listMyWallets,
-  listMyTransactions,
-  type Wallet,
-  type Transaction,
-} from "@/lib/economyApi";
+import { listMyWallets, listMyTransactions, type Wallet, type Transaction } from "@/lib/economyApi";
 
-type TxWithWallet = Transaction & {
-  walletCurrency?: "RUB" | "AKI";
-};
+type TxWithWallet = Transaction & { walletCurrency?: "AKI" };
 
 function formatDate(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("ru-RU", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return d.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
 }
 
 function formatAmount(amount: number) {
@@ -28,30 +18,22 @@ function formatAmount(amount: number) {
 }
 
 function isIncome(tx: Transaction) {
-  return (
-    tx.tx_type === "deposit" ||
-    tx.tx_type === "transfer_in" ||
-    tx.tx_type === "adjust"
-  );
+  return tx.tx_type === "deposit" || tx.tx_type === "transfer_in" || tx.tx_type === "adjust";
 }
 
 export default function WalletPageClient() {
-  const { data: session, status } = useSession();
-
-  const access =
-    session && (session as any)?.backendTokens?.access
-      ? (session as any).backendTokens.access
-      : null;
+  const { status } = useSession();
 
   const [wallets, setWallets] = useState<Wallet[] | null>(null);
   const [txs, setTxs] = useState<TxWithWallet[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Загрузка кошельков и транзакций
   useEffect(() => {
     if (status === "loading") return;
-    if (status !== "authenticated" || !access) {
+
+    // ✅ проверяем ТОЛЬКО факт авторизации NextAuth
+    if (status !== "authenticated") {
       setLoading(false);
       return;
     }
@@ -60,68 +42,44 @@ export default function WalletPageClient() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      listMyWallets(access, ctrl.signal),
-      listMyTransactions(access, undefined, ctrl.signal),
-    ])
+    Promise.all([listMyWallets(ctrl.signal), listMyTransactions(undefined, ctrl.signal)])
       .then(([ws, ts]) => {
+        const akiWallets = ws.filter((w) => w.currency === "AKI");
         const walletById = new Map<string | number, Wallet>();
-        ws.forEach((w) => walletById.set(w.id, w));
+        akiWallets.forEach((w) => walletById.set(w.id, w));
 
-        const enriched: TxWithWallet[] = ts.map((tx) => ({
-          ...tx,
-          walletCurrency: walletById.get(tx.wallet)?.currency,
-        }));
+        const enriched: TxWithWallet[] = ts
+          .filter((tx) => walletById.has(tx.wallet))
+          .map((tx) => ({ ...tx, walletCurrency: "AKI" }));
 
-        setWallets(ws);
+        setWallets(akiWallets);
         setTxs(enriched);
       })
       .catch((e: any) => {
-        console.error(e);
-        setError(e?.message || "Не удалось загрузить данные кошелька");
+        const msg = e?.message || "Не удалось загрузить данные кошелька";
+        setError(msg === "auth_required" ? "Нужно войти заново" : msg);
       })
       .finally(() => setLoading(false));
 
     return () => ctrl.abort();
-  }, [status, access]);
+  }, [status]);
 
-  const totalAKI = useMemo(
-    () =>
-      (wallets || [])
-        .filter((w) => w.currency === "AKI")
-        .reduce((s, w) => s + w.balance, 0),
-    [wallets],
-  );
-
-  const totalRUB = useMemo(
-    () =>
-      (wallets || [])
-        .filter((w) => w.currency === "RUB")
-        .reduce((s, w) => s + w.balance, 0),
-    [wallets],
-  );
+  const totalAKI = useMemo(() => (wallets || []).reduce((s, w) => s + w.balance, 0), [wallets]);
 
   if (status === "loading") {
     return (
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="h-8 w-40 rounded bg-[color:var(--secondary)] animate-pulse mb-6" />
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
-          <div className="h-32 rounded-xl bg-[color:var(--secondary)] animate-pulse" />
-          <div className="h-32 rounded-xl bg-[color:var(--secondary)] animate-pulse" />
-          <div className="h-32 rounded-xl bg-[color:var(--secondary)] animate-pulse" />
-        </div>
         <div className="h-64 rounded-xl bg-[color:var(--secondary)] animate-pulse" />
       </main>
     );
   }
 
-  if (status !== "authenticated" || !access) {
+  if (status !== "authenticated") {
     return (
       <main className="max-w-2xl mx-auto px-4 py-12 text-center">
         <h1 className="text-2xl font-semibold mb-4">Кошелёк</h1>
-        <p className="text-sm opacity-80 mb-6">
-          Для просмотра кошелька необходимо войти в аккаунт.
-        </p>
+        <p className="text-sm opacity-80 mb-6">Для просмотра кошелька необходимо войти в аккаунт.</p>
         <button
           type="button"
           onClick={() => signIn(undefined, { callbackUrl: "/wallet" })}
@@ -135,93 +93,58 @@ export default function WalletPageClient() {
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      {/* Заголовок */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Кошелёк</h1>
-          <p className="text-sm opacity-70">
-            Баланс аккаунта и история пополнений / списаний.
-          </p>
+          <p className="text-sm opacity-70">Баланс AkiCoin и история операций.</p>
         </div>
+
         <div className="flex gap-2">
           <Link
             href="/wallet/deposit"
-            className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] text-sm font-medium hover:opacity-95"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-[var(--border)] text-sm hover:bg-[color:var(--secondary)] transition"
           >
-            Пополнить
+            Пополнить (скоро)
           </Link>
           <Link
             href="/shop"
-            className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-[var(--border)] text-sm hover:bg-[color:var(--secondary)]"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-[var(--border)] text-sm hover:bg-[color:var(--secondary)] transition"
           >
             Магазин
           </Link>
         </div>
       </div>
 
-      {/* Сводка по кошелькам */}
       <section className="grid gap-4 md:grid-cols-3">
         <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--accent)]/90 via-[var(--accent)] to-amber-500 px-4 py-4 text-white shadow-sm">
-          <div className="text-xs opacity-90">Итого по кошелькам</div>
-          <div className="mt-1 text-3xl font-extrabold tracking-wide">
-            {totalAKI.toLocaleString("ru-RU")} AKI
-          </div>
-          <div className="mt-1 text-sm opacity-95">
-            · {totalRUB.toLocaleString("ru-RU")} ₽
-          </div>
+          <div className="text-xs opacity-90">Итого</div>
+          <div className="mt-1 text-3xl font-extrabold tracking-wide">{totalAKI.toLocaleString("ru-RU")} AKI</div>
           <div className="absolute right-4 bottom-3 text-[10px] opacity-70">
-            {wallets?.length ? `${wallets.length} кошелька` : "Кошельков нет"}
+            {wallets?.length ? `${wallets.length} кошелёк(а)` : "Кошельков нет"}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[color:var(--secondary)]/70 px-4 py-4 flex flex-col justify-between">
+        <div className="rounded-2xl border border-[var(--border)] bg-[color:var(--secondary)]/70 px-4 py-4 flex flex-col justify-between md:col-span-2">
           <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wide opacity-70">
-              AkiCoin
-            </div>
+            <div className="text-xs uppercase tracking-wide opacity-70">AkiCoin</div>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] px-2 py-0.5">
               AKI
             </span>
           </div>
-          <div className="mt-2 text-2xl font-bold">
-            {totalAKI.toLocaleString("ru-RU")}
-          </div>
-          <div className="mt-1 text-xs opacity-70">
-            Внутриигровая валюта для бонусов и фишек.
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-[var(--border)] bg-[color:var(--secondary)]/70 px-4 py-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wide opacity-70">
-              Рубли
-            </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 text-sky-400 text-[11px] px-2 py-0.5">
-              ₽
-            </span>
-          </div>
-          <div className="mt-2 text-2xl font-bold">
-            {totalRUB.toLocaleString("ru-RU")}
-          </div>
-          <div className="mt-1 text-xs opacity-70">
-            Реальный баланс (может конвертироваться в AKI).
-          </div>
+          <div className="mt-2 text-2xl font-bold">{totalAKI.toLocaleString("ru-RU")}</div>
+          <div className="mt-1 text-xs opacity-70">Внутренняя валюта Akimori для бонусов и фишек.</div>
         </div>
       </section>
 
       {error && (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/5 px-4 py-3 text-sm text-red-200">
-          {error}
-        </div>
+        <div className="rounded-xl border border-red-500/40 bg-red-500/5 px-4 py-3 text-sm text-red-200">{error}</div>
       )}
 
       <section className="rounded-2xl border border-[var(--border)] bg-[color:var(--secondary)]/40">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
             <h2 className="text-sm font-semibold">История операций</h2>
-            <p className="text-xs opacity-70">
-              Пополнения, списания и переводы по всем кошелькам.
-            </p>
+            <p className="text-xs opacity-70">Операции по AkiCoin.</p>
           </div>
         </div>
 
@@ -239,10 +162,7 @@ export default function WalletPageClient() {
             <tbody>
               {loading && !txs && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-6 text-center text-xs opacity-70"
-                  >
+                  <td colSpan={5} className="px-4 py-6 text-center text-xs opacity-70">
                     Загрузка операций…
                   </td>
                 </tr>
@@ -250,10 +170,7 @@ export default function WalletPageClient() {
 
               {!loading && (!txs || txs.length === 0) && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-6 text-center text-xs opacity-70"
-                  >
+                  <td colSpan={5} className="px-4 py-6 text-center text-xs opacity-70">
                     Операций пока нет.
                   </td>
                 </tr>
@@ -263,12 +180,6 @@ export default function WalletPageClient() {
                 const income = isIncome(tx);
                 const sign = income ? "+" : "-";
                 const color = income ? "text-emerald-400" : "text-red-400";
-                const currency =
-                  tx.walletCurrency === "RUB"
-                    ? "₽"
-                    : tx.walletCurrency === "AKI"
-                    ? "AKI"
-                    : "—";
 
                 let label = "";
                 switch (tx.tx_type) {
@@ -292,30 +203,21 @@ export default function WalletPageClient() {
                 }
 
                 return (
-                  <tr
-                    key={tx.id}
-                    className="border-t border-[var(--border)]/60 hover:bg-[color:var(--background)]/40"
-                  >
-                    <td className="px-4 py-2 align-middle whitespace-nowrap">
-                      {formatDate(tx.created_at)}
-                    </td>
+                  <tr key={tx.id} className="border-t border-[var(--border)]/60 hover:bg-[color:var(--background)]/40">
+                    <td className="px-4 py-2 align-middle whitespace-nowrap">{formatDate(tx.created_at)}</td>
                     <td className="px-4 py-2 align-middle whitespace-nowrap">
                       <span className="inline-flex items-center rounded-full bg-[color:var(--background)]/70 px-2 py-0.5 text-[11px]">
                         {label}
                       </span>
                     </td>
-                    <td className="px-4 py-2 align-middle">
-                      {tx.description || "—"}
-                    </td>
+                    <td className="px-4 py-2 align-middle">{tx.description || "—"}</td>
                     <td className="px-4 py-2 align-middle text-right whitespace-nowrap">
                       <span className={color}>
                         {sign}
                         {formatAmount(tx.amount)}
                       </span>
                     </td>
-                    <td className="px-4 py-2 align-middle text-right whitespace-nowrap">
-                      {currency}
-                    </td>
+                    <td className="px-4 py-2 align-middle text-right whitespace-nowrap">AKI</td>
                   </tr>
                 );
               })}

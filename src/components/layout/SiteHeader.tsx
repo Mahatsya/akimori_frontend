@@ -179,17 +179,31 @@ export default function SiteHeader() {
             className="flex items-center gap-2 shrink-0"
             aria-label="На главную"
           >
-            <div className="relative size-9 rounded-full overflow-hidden bg-[color:var(--card)] hover:ring-indigo-500/60 transition-all">
-              <Image
-                src="/logo.png"
-                alt="AKI"
-                fill
-                sizes="(max-width: 640px) 36px, (max-width: 1024px) 36px, 36px"
-                priority
-                unoptimized
-              />
+            <div className="relative">
+              <div className="relative size-9 rounded-full overflow-hidden bg-[color:var(--card)] hover:ring-indigo-500/60 transition-all">
+                <Image
+                  src="/logo.png"
+                  alt="AKI"
+                  fill
+                  sizes="(max-width: 640px) 36px, (max-width: 1024px) 36px, 36px"
+                  priority
+                  unoptimized
+                />
+              </div>
+
+              {/* Beta badge */}
+              <span
+                className="
+                  absolute -right-2 -bottom-2
+                  text-[10px] font-semibold tracking-wide
+                  text-[color:var(--foreground)/1]
+                "
+              >
+                Beta
+              </span>
             </div>
           </Link>
+
 
           {/* nav */}
           <nav className="hidden md:flex items-center gap-2">
@@ -334,28 +348,9 @@ export default function SiteHeader() {
 
                     <ul className="text-sm space-y-1">
                       <MenuItem
-                        href="/history"
-                        label="История"
-                        icon={<FiClock />}
-                        onSelect={() => setOpenUser(false)}
-                      />
-                      <MenuItem
-                        href="/requests"
-                        label="Мои заявки"
-                        icon={<FiFeather />}
-                        onSelect={() => setOpenUser(false)}
-                      />
-                      <MenuItem
                         href="/feedback"
                         label="Обратная связь"
                         icon={<FiCoffee />}
-                        onSelect={() => setOpenUser(false)}
-                      />
-                      <MenuItem
-                        href="/add"
-                        label="Добавить контент"
-                        icon={<FiPlusCircle />}
-                        chevron
                         onSelect={() => setOpenUser(false)}
                       />
                       <div className="h-px bg-[var(--border)] my-2" />
